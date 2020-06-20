@@ -19,7 +19,19 @@ class Trade:
             'price': self.price
         }
 
+class DayClose:
+    def __init__(self, date, price):
+        self.date = date
+        self.price = price
+
+    def dump(self):
+        return {
+            'date': self.date,
+            'price': self.price
+        }
+
 trades_list = []
+closes_list = []
 
 class MAcrossover(bt.Strategy):
     params = (('pfast', 3), ('pslow', 5),)
@@ -28,6 +40,11 @@ class MAcrossover(bt.Strategy):
         date = self.datas[0].datetime.date(0).isoformat()
         logger.info('%s, %s, %s' % (date, txt, price))
         trades_list.append(Trade(date = date, title = txt, price = price))
+
+    def log_close(self, price):
+        date = self.datas[0].datetime.date(0).isoformat()
+        logger.info(f'Day {date} close: {price}')
+        closes_list.append(DayClose(date = date, price = price))
 
     def __init__(self):
         self.dataclose = self.datas[0].close
@@ -43,30 +60,23 @@ class MAcrossover(bt.Strategy):
         if order.status in [order.Completed]:
             if order.isbuy():
                 self.log('BUY EXECUTED', '%.2f' % order.executed.price)
-                self.order = None
-            elif order.issell():
-                self.log('SELL EXECUTED', '%.2f' % order.executed.price)
-                self.bar_executed = len(self)
-                self.order = None
+            self.bar_executed = len(self)
         elif order.status in [order.Canceled, order.Margin, order.Rejected]:
             self.log('Order Canceled/Margin/Rejected')
-            self.order = None
+        self.order = None
 
     def next(self):
+        self.log_close('%.2f' % self.dataclose[0])
         if self.order:
             return
         if not self.position:
             if self.fast_sma[0] > self.slow_sma[0] and self.fast_sma[-1] < self.slow_sma[-1]:
                 self.log('BUY CREATE', '%.2f' % self.dataclose[0])
                 self.order = self.buy()
-            elif self.fast_sma[0] < self.slow_sma[0] and self.fast_sma[-1] > self.slow_sma[-1]:
-                self.log('SELL CREATE', '%.2f' % self.dataclose[0])
-                self.order = self.sell()
         else:
             if len(self) >= (self.bar_executed + 5):
                 self.log('CLOSE CREATE', '%.2f' % self.dataclose[0])
                 self.order = self.close()
-
 
 
 
@@ -92,4 +102,4 @@ def execute(start_date, end_date, path):
     logger.info('Starting Portfolio Value: %.2f' % start_portfolio_value)
     logger.info('Final Portfolio Value: %.2f' % end_portfolio_value)
     percent_result = pnl / (start_portfolio_value / 100)
-    return percent_result, [o.dump() for o in trades_list]
+    return percent_result, [o.dump() for o in trades_list], [c.dump() for c in closes_list]

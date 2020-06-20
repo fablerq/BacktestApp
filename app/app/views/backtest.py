@@ -42,7 +42,7 @@ def start_execution(request):
         backtest.result = result[0]
         backtest.save()
 
-        return JsonResponse({"percent": f"{result[0]}", "trades": result[1]}, status=200)
+        return JsonResponse({"percent": f"{result[0]}", "trades": result[1], "closes": result[2]}, status=200)
     except Exception as err:
         logger.info(f"Failed to execute request: {err}")
         return JsonResponse({"message": f"{err}"}, status=400)
