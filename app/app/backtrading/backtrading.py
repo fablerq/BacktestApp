@@ -88,6 +88,9 @@ class MAcrossover(bt.Strategy):
 
 
 def execute(start_date, end_date, path):
+    trades_list.clear()
+    closes_list.clear()
+
     cerebro = bt.Cerebro()
     cerebro.addstrategy(MAcrossover)
     cerebro.addstrategy(PrintClose)
