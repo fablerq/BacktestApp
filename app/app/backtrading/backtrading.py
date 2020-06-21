@@ -33,18 +33,26 @@ class DayClose:
 trades_list = []
 closes_list = []
 
+
+class PrintClose(bt.Strategy):
+    def __init__(self):
+        self.dataclose = self.datas[0].close
+
+    def log(self, price=None):
+        date = self.datas[0].datetime.date(0).isoformat()
+        logger.info('%s, %s, %s' % (date, "day close:", price))
+        closes_list.append(DayClose(date = date, price = price))
+
+    def next(self):
+        self.log('%.2f' % self.dataclose[0])
+
 class MAcrossover(bt.Strategy):
-    params = (('pfast', 3), ('pslow', 5),)
+    params = (('pfast', 10), ('pslow', 20),)
 
     def log(self, txt, price=None):
         date = self.datas[0].datetime.date(0).isoformat()
         logger.info('%s, %s, %s' % (date, txt, price))
         trades_list.append(Trade(date = date, title = txt, price = price))
-
-    def log_close(self, price):
-        date = self.datas[0].datetime.date(0).isoformat()
-        logger.info(f'Day {date} close: {price}')
-        closes_list.append(DayClose(date = date, price = price))
 
     def __init__(self):
         self.dataclose = self.datas[0].close
@@ -66,7 +74,6 @@ class MAcrossover(bt.Strategy):
         self.order = None
 
     def next(self):
-        self.log_close('%.2f' % self.dataclose[0])
         if self.order:
             return
         if not self.position:
@@ -75,7 +82,7 @@ class MAcrossover(bt.Strategy):
                 self.order = self.buy()
         else:
             if len(self) >= (self.bar_executed + 5):
-                self.log('CLOSE CREATE', '%.2f' % self.dataclose[0])
+                self.log('SELL EXECUTED', '%.2f' % self.dataclose[0])
                 self.order = self.close()
 
 
@@ -83,6 +90,7 @@ class MAcrossover(bt.Strategy):
 def execute(start_date, end_date, path):
     cerebro = bt.Cerebro()
     cerebro.addstrategy(MAcrossover)
+    cerebro.addstrategy(PrintClose)
 
     data = bt.feeds.YahooFinanceCSVData(
         dataname=path,
